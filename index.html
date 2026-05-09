@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Gloss — Sincronização iCloud</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --rose:#E8697A;--rose-light:#F2A3AE;--rose-dark:#C94B5C;
+    --gold:#C9A84C;--cream:#FAF7F4;--cream-dark:#F0EAE2;
+    --ink:#1A1412;--ink-soft:#3D2E2A;--muted:#9A8880;
+    --white:#FFFFFF;--green:#5A8A72;--green-light:#E8F3EE;
+    --red-light:#FDECEA;--shadow:0 4px 24px rgba(26,20,18,0.08);
+    --radius:16px;--radius-sm:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--ink);min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+
+  .header{background:var(--white);padding:20px 24px 16px;padding-top:max(20px,env(safe-area-inset-top));border-bottom:1px solid var(--cream-dark);position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between}
+  .logo{display:flex;align-items:center;gap:10px}
+  .logo-mark{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--rose),var(--rose-dark));display:flex;align-items:center;justify-content:center;font-size:18px}
+  .logo-text{font-family:'Playfair Display',serif;font-size:22px;color:var(--ink);letter-spacing:-0.5px}
+  .header-date{font-size:12px;color:var(--muted)}
+
+  .nav{display:flex;gap:4px;background:var(--white);padding:8px 16px;padding-bottom:max(8px,env(safe-area-inset-bottom));border-top:1px solid var(--cream-dark);position:fixed;bottom:0;left:0;right:0;z-index:100}
+  .nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 4px;border:none;background:transparent;cursor:pointer;border-radius:var(--radius-sm);transition:all 0.2s;color:var(--muted)}
+  .nav-btn.active{color:var(--rose);background:#FDF0F2}
+  .nav-btn span{font-size:10px;font-weight:500}
+  .nav-icon{font-size:22px;line-height:1}
+
+  .main{padding:20px 16px 100px;max-width:600px;margin:0 auto}
+  .view{display:none}.view.active{display:block}
+  .section-title{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:var(--ink);margin-bottom:4px}
+  .section-sub{font-size:13px;color:var(--muted);margin-bottom:20px}
+
+  .card{background:var(--white);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);margin-bottom:12px}
+  .card-sm{padding:14px 16px}
+
+  .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+  .kpi{background:var(--white);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow)}
+  .kpi-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+  .kpi-value{font-family:'Playfair Display',serif;font-size:24px;font-weight:700;color:var(--ink)}
+  .kpi-value.rose{color:var(--rose)}.kpi-value.green{color:var(--green)}.kpi-value.gold{color:var(--gold)}
+  .kpi-change{font-size:11px;margin-top:4px;color:var(--green)}
+
+  .form-group{margin-bottom:14px}
+  .form-label{font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:6px;display:block}
+  .form-input,.form-select{width:100%;padding:12px 14px;border:1.5px solid var(--cream-dark);border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:15px;color:var(--ink);background:var(--cream);outline:none;transition:border 0.2s;-webkit-appearance:none;appearance:none}
+  .form-input:focus,.form-select:focus{border-color:var(--rose);background:var(--white)}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+  .btn{padding:14px 20px;border-radius:var(--radius-sm);border:none;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer;transition:all 0.2s;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-primary{background:var(--rose);color:var(--white)}.btn-primary:active{background:var(--rose-dark);transform:scale(0.98)}.btn-primary:disabled{opacity:0.5;cursor:not-allowed}
+  .btn-secondary{background:var(--cream-dark);color:var(--ink-soft)}
+  .btn-danger{background:var(--red-light);color:#C94B4B}
+  .btn-sm{padding:8px 14px;font-size:13px;width:auto;border-radius:8px}
+  .btn-outline{padding:12px 20px;border-radius:var(--radius-sm);border:1.5px solid var(--rose);background:transparent;color:var(--rose);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:all 0.2s;width:100%;display:flex;align-items:center;justify-content:center;gap:8px}
+  .btn-outline:active{background:#FDF0F2}
+
+  .list-item{background:var(--white);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.04);cursor:pointer;transition:all 0.15s}
+  .list-item:active{transform:scale(0.99)}
+  .item-icon{width:44px;height:44px;border-radius:12px;background:var(--cream-dark);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+  .item-info{flex:1;min-width:0}
+  .item-name{font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item-sub{font-size:12px;color:var(--muted);margin-top:2px}
+  .item-right{text-align:right;flex-shrink:0}
+  .item-price{font-size:15px;font-weight:700;color:var(--ink)}
+  .item-stock{font-size:12px;margin-top:2px}
+  .stock-ok{color:var(--green)}.stock-low{color:var(--gold)}.stock-out{color:var(--rose)}
+
+  .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+  .badge-green{background:var(--green-light);color:var(--green)}
+  .badge-rose{background:#FDF0F2;color:var(--rose)}
+  .badge-gold{background:#FDF7E8;color:var(--gold)}
+
+  .divider{height:1px;background:var(--cream-dark);margin:16px 0}
+
+  .chart-bar-wrap{margin-top:4px}
+  .chart-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .chart-bar-label{font-size:12px;color:var(--muted);width:60px;flex-shrink:0;text-align:right}
+  .chart-bar-bg{flex:1;height:28px;background:var(--cream-dark);border-radius:6px;overflow:hidden}
+  .chart-bar-fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--rose-light),var(--rose));display:flex;align-items:center;padding:0 8px;font-size:11px;font-weight:600;color:var(--white);min-width:2px}
+
+  .sheet-overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(26,20,18,0.5);backdrop-filter:blur(4px)}
+  .sheet-overlay.open{display:flex;align-items:flex-end}
+  .sheet{background:var(--white);border-radius:24px 24px 0 0;padding:20px 20px max(24px,env(safe-area-inset-bottom));width:100%;max-height:90vh;overflow-y:auto;animation:slideUp 0.3s cubic-bezier(.32,1,.5,1)}
+  .sheet-handle{width:36px;height:4px;background:var(--cream-dark);border-radius:2px;margin:0 auto 20px}
+  .sheet-title{font-family:'Playfair Display',serif;font-size:22px;margin-bottom:20px}
+  @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+
+  .toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--white);padding:12px 20px;border-radius:40px;font-size:14px;font-weight:500;opacity:0;transition:all 0.3s;z-index:300;white-space:nowrap;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .empty{text-align:center;padding:40px 20px;color:var(--muted)}
+  .empty-icon{font-size:48px;margin-bottom:12px}
+  .empty p{font-size:14px;line-height:1.6}
+
+  .summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0}
+  .summary-row+.summary-row{border-top:1px solid var(--cream-dark)}
+  .summary-label{font-size:14px;color:var(--muted)}
+  .summary-value{font-size:14px;font-weight:600;color:var(--ink)}
+  .summary-value.total{font-size:18px;font-family:'Playfair Display',serif;color:var(--rose)}
+
+  .sale-item-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .sale-item-row select{flex:1}
+  .qty-input{width:64px!important;flex-shrink:0}
+  .delete-btn{background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);padding:4px;flex-shrink:0}
+
+  .segment{display:flex;background:var(--cream-dark);border-radius:var(--radius-sm);padding:3px;margin-bottom:16px}
+  .segment-btn{flex:1;padding:8px;border:none;background:transparent;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all 0.2s}
+  .segment-btn.active{background:var(--white);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,0.1)}
+
+  .profit-bar{height:6px;background:var(--cream-dark);border-radius:3px;margin-top:8px;overflow:hidden}
+  .profit-fill{height:100%;background:linear-gradient(90deg,var(--green),#7FBA9A);border-radius:3px}
+
+  /* custo medio tag */
+  .cm-tag{display:inline-flex;align-items:center;gap:3px;background:#F0F7F3;border-radius:6px;padding:2px 7px;font-size:11px;color:var(--green);font-weight:600;margin-top:3px}
+
+  /* pendente */
+  .badge-pending{background:#FFF4E6;color:#D4820A}
+  .pending-card{background:#FFF9F0;border:1.5px solid #F5C97A;border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+  .pending-check{width:26px;height:26px;border-radius:50%;border:2px solid #D4820A;background:transparent;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:14px;transition:all 0.2s}
+  .pending-check:active{transform:scale(0.9)}
+  .kpi-pending{background:linear-gradient(135deg,#FFF4E6,#FFE8C0);border:1.5px solid #F5C97A}
+
+  .import-area{border:2px dashed var(--rose-light);border-radius:var(--radius);padding:28px 20px;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--white);margin-bottom:12px}
+  .import-area:hover,.import-area.drag-over{border-color:var(--rose);background:#FDF0F2}
+  .import-icon{font-size:40px;margin-bottom:10px}
+  .import-title{font-size:15px;font-weight:600;color:var(--ink);margin-bottom:4px}
+  .import-sub{font-size:12px;color:var(--muted)}
+  .import-stats{display:flex;gap:8px;margin-bottom:12px}
+  .import-stat{flex:1;background:var(--white);border-radius:var(--radius-sm);padding:12px;text-align:center;border:1px solid var(--cream-dark)}
+  .import-stat-val{font-size:22px;font-weight:700;font-family:'Playfair Display',serif}
+  .import-stat-lbl{font-size:11px;color:var(--muted);margin-top:2px}
+  .preview-row{display:flex;align-items:flex-start;padding:10px 14px;border-bottom:1px solid var(--cream-dark);gap:10px}
+  .preview-row:last-child{border-bottom:none}
+  .preview-check{font-size:16px;flex-shrink:0;margin-top:2px}
+  .preview-name{font-size:13px;font-weight:600}
+  .preview-detail{font-size:11px;color:var(--muted);margin-top:2px}
+
+  /* BACKUP */
+  .backup-device-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--cream-dark)}
+  .backup-device-row:last-child{border-bottom:none}
+  .backup-device-icon{font-size:28px;flex-shrink:0}
+  .backup-device-info{flex:1;min-width:0}
+  .backup-device-name{font-size:14px;font-weight:600;color:var(--ink)}
+  .backup-device-date{font-size:11px;color:var(--muted);margin-top:2px}
+  .backup-hint{font-size:12px;color:var(--muted);line-height:1.6;background:var(--cream);border-radius:var(--radius-sm);padding:12px;margin-bottom:12px}
+  .backup-hint b{color:var(--ink-soft)}
+
+  @media(min-width:600px){
+    .main{padding:28px 24px 100px}
+    .kpi-grid{grid-template-columns:repeat(4,1fr)}
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo">
+    <div class="logo-mark">💄</div>
+    <span class="logo-text">Gloss</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span class="header-date" id="headerDate"></span>
+    <button onclick="abrirBackup()" style="background:none;border:none;cursor:pointer;font-size:22px;padding:2px;line-height:1" title="Backup & Sincronização">☁️</button>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- DASHBOARD -->
+  <div class="view active" id="view-dashboard">
+    <p class="section-title">Visão Geral</p>
+    <p class="section-sub">Resumo do seu negócio</p>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-label">Vendas Hoje</div><div class="kpi-value rose" id="kpi-hoje">$ 0</div><div class="kpi-change" id="kpi-hoje-qtd">0 vendas</div></div>
+      <div class="kpi"><div class="kpi-label">Lucro Total</div><div class="kpi-value green" id="kpi-lucro">$ 0</div><div class="kpi-change" id="kpi-margem">0% margem</div></div>
+      <div class="kpi"><div class="kpi-label">Receita Total</div><div class="kpi-value gold" id="kpi-receita">$ 0</div><div class="kpi-change" id="kpi-total-vendas">0 vendas</div></div>
+      <div class="kpi"><div class="kpi-label">Itens em Estoque</div><div class="kpi-value" id="kpi-estoque">0</div><div class="kpi-change" id="kpi-alertas" style="color:var(--gold)">0 alertas</div></div>
+    </div>
+    <!-- PENDENTES BANNER -->
+    <div id="dash-pendentes-banner" style="display:none;margin-bottom:12px">
+      <div class="kpi kpi-pending" style="display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer" onclick="navigate('resultados',document.querySelector('.nav-btn:nth-child(4)'))">
+        <span style="font-size:28px">⏳</span>
+        <div style="flex:1">
+          <div style="font-size:11px;color:#D4820A;text-transform:uppercase;letter-spacing:0.5px;font-weight:700">Cobranças Pendentes</div>
+          <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:#D4820A" id="kpi-pendente-valor">$ 0</div>
+          <div style="font-size:11px;color:#D4820A;margin-top:2px" id="kpi-pendente-qtd">0 vendas aguardando pagamento</div>
+        </div>
+        <span style="font-size:18px;color:#D4820A">›</span>
+      </div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><span style="font-weight:600;font-size:15px">Vendas por Produto</span><span class="badge badge-rose">Este mês</span></div>
+      <div class="chart-bar-wrap" id="dash-chart"><div class="empty"><div class="empty-icon">📊</div><p>Nenhuma venda registrada ainda</p></div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:600;font-size:15px;margin-bottom:14px">Estoque em Alerta</div>
+      <div id="dash-alertas"><div class="empty"><div class="empty-icon">✅</div><p>Todos os produtos estão com estoque ok!</p></div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:600;font-size:15px;margin-bottom:14px">Últimas Vendas</div>
+      <div id="dash-ultimas"><div class="empty"><div class="empty-icon">🛍️</div><p>Nenhuma venda ainda</p></div></div>
+    </div>
+  </div>
+
+  <!-- ESTOQUE -->
+  <div class="view" id="view-estoque">
+    <p class="section-title">Estoque</p>
+    <p class="section-sub">Gerencie seus produtos</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px">
+      <button class="btn btn-primary" onclick="abrirNovoProduto()">＋ Produto</button>
+      <button class="btn-outline" onclick="openSheet('sheet-importar')">📥 Importar XLS</button>
+    </div>
+    <div class="segment">
+      <button class="segment-btn active" onclick="filterEstoque('todos',this)">Todos</button>
+      <button class="segment-btn" onclick="filterEstoque('baixo',this)">Baixo</button>
+      <button class="segment-btn" onclick="filterEstoque('zerado',this)">Zerado</button>
+    </div>
+    <div id="lista-estoque"><div class="empty"><div class="empty-icon">📦</div><p>Nenhum produto cadastrado.<br>Adicione seu primeiro produto!</p></div></div>
+  </div>
+
+  <!-- VENDAS -->
+  <div class="view" id="view-vendas">
+    <p class="section-title">Vendas</p>
+    <p class="section-sub">Registre e acompanhe vendas</p>
+    <button class="btn btn-primary" style="margin-bottom:16px" onclick="abrirNovaVenda()">＋ Nova Venda</button>
+    <div class="segment">
+      <button class="segment-btn active" onclick="filterVendas('todas',this)">Todas</button>
+      <button class="segment-btn" onclick="filterVendas('hoje',this)">Hoje</button>
+      <button class="segment-btn" onclick="filterVendas('semana',this)">Semana</button>
+    </div>
+    <div id="lista-vendas"><div class="empty"><div class="empty-icon">🛒</div><p>Nenhuma venda registrada.<br>Registre sua primeira venda!</p></div></div>
+  </div>
+
+  <!-- RESULTADOS -->
+  <div class="view" id="view-resultados">
+    <p class="section-title">Resultados</p>
+    <p class="section-sub">Análise financeira do negócio</p>
+    <div class="card">
+      <div style="font-weight:600;font-size:15px;margin-bottom:16px">Resumo Financeiro</div>
+      <div class="summary-row"><span class="summary-label">Total em Vendas</span><span class="summary-value" id="res-receita">$ 0,00</span></div>
+      <div class="summary-row"><span class="summary-label">Custo dos Produtos</span><span class="summary-value" style="color:var(--rose)" id="res-custo">$ 0,00</span></div>
+      <div class="summary-row"><span class="summary-label">Lucro Bruto</span><span class="summary-value total" id="res-lucro">$ 0,00</span></div>
+      <div class="profit-bar" style="margin-top:12px"><div class="profit-fill" id="res-profit-fill" style="width:0%"></div></div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px" id="res-margem-txt">Margem de lucro: 0%</div>
+    </div>
+    <div class="card">
+      <div style="font-weight:600;font-size:15px;margin-bottom:14px">Top Produtos por Receita</div>
+      <div id="res-top-produtos"><div class="empty"><div class="empty-icon">🏆</div><p>Faça vendas para ver o ranking</p></div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:600;font-size:15px;margin-bottom:14px">Vendas por Período</div>
+      <div class="chart-bar-wrap" id="res-chart-periodo"><div class="empty"><div class="empty-icon">📅</div><p>Nenhuma venda registrada</p></div></div>
+    </div>
+    <div class="card">
+      <div style="font-weight:600;font-size:15px;margin-bottom:14px">Estatísticas</div>
+      <div class="summary-row"><span class="summary-label">Total de Vendas</span><span class="summary-value" id="stat-num-vendas">0</span></div>
+      <div class="summary-row"><span class="summary-label">Ticket Médio</span><span class="summary-value" id="stat-ticket">$ 0,00</span></div>
+      <div class="summary-row"><span class="summary-label">Produto Mais Vendido</span><span class="summary-value" id="stat-top">—</span></div>
+      <div class="summary-row"><span class="summary-label">Produtos Cadastrados</span><span class="summary-value" id="stat-produtos">0</span></div>
+    </div>
+
+    <!-- COBRANÇAS PENDENTES -->
+    <div class="card" id="card-cobrancas">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div>
+          <div style="font-weight:700;font-size:15px;color:var(--ink)">⏳ Cobranças Pendentes</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px" id="cobrancas-resumo">Nenhuma cobrança pendente</div>
+        </div>
+        <span class="badge badge-pending" id="cobrancas-total-badge" style="display:none"></span>
+      </div>
+      <div id="lista-cobrancas">
+        <div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:32px">✅</div><p>Nenhuma venda com pagamento pendente</p></div>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="navigate('dashboard',this)"><span class="nav-icon">🏠</span><span>Início</span></button>
+  <button class="nav-btn" onclick="navigate('estoque',this)"><span class="nav-icon">📦</span><span>Estoque</span></button>
+  <button class="nav-btn" onclick="navigate('vendas',this)"><span class="nav-icon">🛒</span><span>Vendas</span></button>
+  <button class="nav-btn" onclick="navigate('resultados',this)"><span class="nav-icon">📈</span><span>Resultados</span></button>
+</nav>
+
+<!-- SHEET: PRODUTO -->
+<div class="sheet-overlay" id="sheet-produto" onclick="closeSheetOutside(event,'sheet-produto')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title" id="sheet-produto-title">Novo Produto</div>
+    <input type="hidden" id="produto-edit-id">
+    <div class="form-group">
+      <label class="form-label">Nome do Produto</label>
+      <input class="form-input" id="prod-nome" placeholder="Ex: Batom Matte Rosa" type="text">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Categoria</label>
+      <select class="form-select" id="prod-cat">
+        <option>💄 Batom</option><option>💅 Esmalte</option><option>👁️ Olhos</option>
+        <option>✨ Base/Pó</option><option>💆 Skin Care</option><option>💇 Cabelo</option>
+        <option>🌸 Perfume</option><option>🧴 Corpo</option><option>🎁 Kit/Presente</option><option>📦 Outro</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Custo Unitário ($)</label><input class="form-input" id="prod-custo" type="number" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="form-group"><label class="form-label">Preço de Venda ($)</label><input class="form-input" id="prod-venda" type="number" placeholder="0.00" min="0" step="0.01"></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Estoque Atual</label><input class="form-input" id="prod-estoque" type="number" placeholder="0" min="0"></div>
+      <div class="form-group"><label class="form-label">Estoque Mínimo</label><input class="form-input" id="prod-minimo" type="number" placeholder="5" min="0"></div>
+    </div>
+    <!-- custo medio readonly -->
+    <div class="form-group" id="grp-custo-medio" style="display:none">
+      <label class="form-label">Custo Médio (calculado)</label>
+      <input class="form-input" id="prod-custo-medio-display" type="text" readonly style="background:var(--green-light);color:var(--green);font-weight:600">
+    </div>
+    <button class="btn btn-primary" onclick="salvarProduto()">💾 Salvar Produto</button>
+    <button class="btn btn-danger" id="btn-excluir-produto" style="margin-top:8px;display:none" onclick="excluirProduto()">🗑️ Excluir Produto</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeSheet('sheet-produto')">Cancelar</button>
+  </div>
+</div>
+
+<!-- SHEET: VENDA -->
+<div class="sheet-overlay" id="sheet-venda" onclick="closeSheetOutside(event,'sheet-venda')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Nova Venda</div>
+    <div class="form-group">
+      <label class="form-label">Cliente (opcional)</label>
+      <input class="form-input" id="venda-cliente" type="text" placeholder="Nome do cliente">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Forma de Pagamento</label>
+      <select class="form-select" id="venda-pagamento">
+        <option>💳 Cartão de Crédito</option><option>💳 Cartão de Débito</option>
+        <option>📱 Pix</option><option>💵 Dinheiro</option><option>📲 Transferência</option>
+        <option>⏳ Pendente</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <label class="form-label" style="margin:0">Itens da Venda</label>
+        <button class="btn btn-primary btn-sm" onclick="addItemVenda()">+ Item</button>
+      </div>
+      <div id="venda-itens"></div>
+    </div>
+    <div class="divider"></div>
+    <div class="summary-row"><span class="summary-label">Total</span><span class="summary-value total" id="venda-total">$ 0.00</span></div>
+    <div style="height:12px"></div>
+    <button class="btn btn-primary" onclick="finalizarVenda()">✅ Finalizar Venda</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeSheet('sheet-venda')">Cancelar</button>
+  </div>
+</div>
+
+<!-- SHEET: DETALHE VENDA -->
+<div class="sheet-overlay" id="sheet-venda-detalhe" onclick="closeSheetOutside(event,'sheet-venda-detalhe')">
+  <div class="sheet">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Detalhe da Venda</div>
+    <div id="venda-detalhe-content"></div>
+    <button class="btn btn-primary" id="btn-marcar-pago" style="margin-top:8px;display:none;background:#D4820A">✅ Confirmar Pagamento Recebido</button>
+    <button class="btn btn-danger" style="margin-top:8px" id="btn-estornar">↩️ Estornar Venda</button>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeSheet('sheet-venda-detalhe')">Fechar</button>
+  </div>
+</div>
+
+<!-- SHEET: IMPORTAR -->
+<div class="sheet-overlay" id="sheet-importar" onclick="closeSheetOutside(event,'sheet-importar')">
+  <div class="sheet" style="max-height:92vh">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">Importar Produtos</div>
+    <div id="import-step-1">
+      <div class="import-area" id="import-dropzone"
+        onclick="document.getElementById('import-file-input').click()"
+        ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
+        <div class="import-icon">📊</div>
+        <div class="import-title">Selecionar arquivo Excel</div>
+        <div class="import-sub">Toque para selecionar ou arraste<br>.xlsx ou .xls</div>
+      </div>
+      <input type="file" id="import-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleFileSelect(event)">
+      <div class="card card-sm" style="background:#FDF0F2;box-shadow:none;margin-bottom:12px">
+        <div style="font-size:13px;font-weight:600;color:var(--rose);margin-bottom:6px">📋 Colunas esperadas:</div>
+        <div style="font-size:12px;color:var(--ink-soft);line-height:2">
+          <b>A</b> Nome &nbsp;·&nbsp; <b>B</b> Categoria &nbsp;·&nbsp; <b>C</b> Custo ($) &nbsp;·&nbsp;
+          <b>D</b> Venda ($) &nbsp;·&nbsp; <b>E</b> Estoque &nbsp;·&nbsp; <b>F</b> Estoque Mínimo
+        </div>
+        <div style="font-size:11px;color:var(--green);margin-top:8px;font-weight:600">
+          ℹ️ Produtos já existentes terão estoque somado e custo médio recalculado.
+        </div>
+      </div>
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:8px">Não tem a planilha modelo?</div>
+      <button class="btn-outline" onclick="downloadTemplate()">⬇️ Baixar Planilha Modelo (.xlsx)</button>
+    </div>
+    <div id="import-step-2" style="display:none">
+      <div id="import-stats-row" class="import-stats"></div>
+      <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:8px">Pré-visualização:</div>
+      <div style="max-height:300px;overflow-y:auto;border-radius:var(--radius-sm);border:1.5px solid var(--cream-dark);background:var(--white)">
+        <div id="import-preview-list"></div>
+      </div>
+      <div style="height:14px"></div>
+      <button class="btn btn-primary" id="btn-confirmar-import" onclick="confirmarImportacao()">✅ Importar</button>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="resetImport()">↩️ Escolher outro arquivo</button>
+    </div>
+    <button class="btn btn-secondary" style="margin-top:8px" onclick="closeSheet('sheet-importar');resetImport()">Fechar</button>
+  </div>
+</div>
+
+<!-- SHEET: BACKUP & SYNC (Shortcut version) -->
+<div class="sheet-overlay" id="sheet-backup" onclick="closeSheetOutside(event,'sheet-backup')">
+  <div class="sheet" style="max-height:92vh">
+    <div class="sheet-handle"></div>
+    <div class="sheet-title">☁️ Sync iCloud</div>
+
+    <!-- STATUS SYNC -->
+    <div id="bkp-sync-status" style="border-radius:12px;padding:14px;margin-bottom:14px;display:flex;align-items:center;gap:12px;background:var(--green-light)">
+      <span style="font-size:24px" id="bkp-status-icon">✅</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--green)" id="bkp-status-title">Pronto</div>
+        <div style="font-size:11px;color:var(--green)" id="bkp-status-sub">App configurado com sincronização iCloud</div>
+      </div>
+    </div>
+
+    <!-- DADOS ATUAIS -->
+    <div class="card card-sm" style="margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--ink);margin-bottom:10px">📱 Dados neste dispositivo</div>
+      <div class="summary-row"><span class="summary-label">Produtos cadastrados</span><span class="summary-value" id="bkp-num-produtos">0</span></div>
+      <div class="summary-row"><span class="summary-label">Vendas registradas</span><span class="summary-value" id="bkp-num-vendas">0</span></div>
+      <div class="summary-row"><span class="summary-label">Último sync exportado</span><span class="summary-value" id="bkp-ultimo-export" style="font-size:12px;color:var(--muted)">Nunca</span></div>
+      <div class="summary-row"><span class="summary-label">Última sincronização recebida</span><span class="summary-value" id="bkp-ultimo-import" style="font-size:12px;color:var(--muted)">Nunca</span></div>
+    </div>
+
+    <!-- EXPORTAR PARA iCLOUD -->
+    <div style="font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Exportar para iCloud Drive</div>
+    <button class="btn btn-primary" onclick="exportarSyncICloud()" style="margin-bottom:6px">
+      ☁️ Exportar Sync para iCloud Drive
+    </button>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+      Salva <b>gloss-sync.json</b> — mova para <b>iCloud Drive/Gloss/</b> no Finder ou app Arquivos
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- RESTAURAR MANUAL -->
+    <div style="font-size:12px;font-weight:600;color:var(--ink-soft);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:8px">Restaurar backup</div>
+    <button class="btn-outline" onclick="document.getElementById('bkp-file-input').click()" style="margin-bottom:6px">
+      ⬆️ Carregar arquivo de sync (.json)
+    </button>
+    <input type="file" id="bkp-file-input" accept=".json" style="display:none" onchange="importarBackup(event)">
+    <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.5">
+      ⚠️ Substitui os dados locais pelo backup selecionado
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- GUIA SHORTCUT -->
+    <div style="background:#EBF2FA;border-radius:12px;padding:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:700;color:#4A7FB5;margin-bottom:6px">🔧 Configurar Atalho automático</div>
+      <div style="font-size:12px;color:#4A7FB5;line-height:1.7">
+        Para sincronizar <b>automaticamente ao abrir</b> o app no iPhone/iPad, configure o Atalho usando o guia incluído no pacote.<br><br>
+        Arquivo: <b>gloss-shortcut-guide.html</b>
+      </div>
+    </div>
+
+    <!-- RESET -->
+    <button class="btn btn-danger" onclick="resetarDados()">
+      🗑️ Apagar Todos os Dados
+    </button>
+
+    <button class="btn btn-secondary" style="margin-top:10px" onclick="closeSheet('sheet-backup')">Fechar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===== STATE =====
+const STATE = {
+  produtos: JSON.parse(localStorage.getItem('gloss_produtos') || '[]'),
+  vendas:   JSON.parse(localStorage.getItem('gloss_vendas')   || '[]'),
+};
+let filtroEstoque = 'todos';
+let filtroVendas  = 'todas';
+let vendaItens    = [];
+
+function save() {
+  localStorage.setItem('gloss_produtos', JSON.stringify(STATE.produtos));
+  localStorage.setItem('gloss_vendas',   JSON.stringify(STATE.vendas));
+}
+
+// ===== UTILS =====
+// Generic $ currency — 2 decimal places, dot separator
+const fmt = v => '$ ' + Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+const today = () => new Date().toISOString().split('T')[0];
+const uid   = () => Date.now().toString(36) + Math.random().toString(36).substr(2);
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// Header date
+(function(){
+  const d = new Date();
+  document.getElementById('headerDate').textContent =
+    d.toLocaleDateString('pt-BR', { weekday:'short', day:'numeric', month:'short' });
+})();
+
+// ===== NAVIGATION =====
+function navigate(view, btn) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('view-' + view).classList.add('active');
+  btn.classList.add('active');
+  if (view === 'dashboard')  renderDashboard();
+  if (view === 'estoque')    renderEstoque();
+  if (view === 'vendas')     renderVendas();
+  if (view === 'resultados') { renderResultados(); }
+}
+
+// ===== SHEETS =====
+function openSheet(id)  { document.getElementById(id).classList.add('open');    document.body.style.overflow='hidden'; }
+function closeSheet(id) { document.getElementById(id).classList.remove('open'); document.body.style.overflow=''; }
+function closeSheetOutside(e, id) { if (e.target === document.getElementById(id)) closeSheet(id); }
+
+// ===== PRODUTO =====
+function abrirNovoProduto() {
+  document.getElementById('sheet-produto-title').textContent = 'Novo Produto';
+  document.getElementById('produto-edit-id').value = '';
+  document.getElementById('prod-nome').value    = '';
+  document.getElementById('prod-cat').value     = '💄 Batom';
+  document.getElementById('prod-custo').value   = '';
+  document.getElementById('prod-venda').value   = '';
+  document.getElementById('prod-estoque').value = '';
+  document.getElementById('prod-minimo').value  = '5';
+  document.getElementById('btn-excluir-produto').style.display = 'none';
+  document.getElementById('grp-custo-medio').style.display     = 'none';
+  openSheet('sheet-produto');
+}
+
+function editarProduto(id) {
+  const p = STATE.produtos.find(p => p.id === id);
+  if (!p) return;
+  document.getElementById('sheet-produto-title').textContent   = 'Editar Produto';
+  document.getElementById('produto-edit-id').value             = id;
+  document.getElementById('prod-nome').value                   = p.nome;
+  document.getElementById('prod-cat').value                    = p.categoria;
+  document.getElementById('prod-custo').value                  = p.custo;
+  document.getElementById('prod-venda').value                  = p.venda;
+  document.getElementById('prod-estoque').value                = p.estoque;
+  document.getElementById('prod-minimo').value                 = p.minimo;
+  document.getElementById('btn-excluir-produto').style.display = 'block';
+  // show custo medio if exists
+  if (p.custoMedio !== undefined && p.custoMedio !== p.custo) {
+    document.getElementById('grp-custo-medio').style.display       = 'block';
+    document.getElementById('prod-custo-medio-display').value      = fmt(p.custoMedio) + '  (média ponderada)';
+  } else {
+    document.getElementById('grp-custo-medio').style.display = 'none';
+  }
+  openSheet('sheet-produto');
+}
+
+function salvarProduto() {
+  const nome     = document.getElementById('prod-nome').value.trim();
+  const categoria= document.getElementById('prod-cat').value;
+  const custo    = parseFloat(document.getElementById('prod-custo').value)   || 0;
+  const venda    = parseFloat(document.getElementById('prod-venda').value)   || 0;
+  const estoque  = parseInt(document.getElementById('prod-estoque').value)   || 0;
+  const minimo   = parseInt(document.getElementById('prod-minimo').value)    || 5;
+  if (!nome)      { showToast('❌ Informe o nome do produto'); return; }
+  if (venda <= 0) { showToast('❌ Informe o preço de venda');  return; }
+
+  const editId = document.getElementById('produto-edit-id').value;
+  if (editId) {
+    const idx = STATE.produtos.findIndex(p => p.id === editId);
+    if (idx >= 0) {
+      const p = STATE.produtos[idx];
+      // recalculate custo medio if estoque/custo changed
+      const novoEstoque = estoque;
+      const estoqueAnt  = p.estoque;
+      const cmAnt       = p.custoMedio !== undefined ? p.custoMedio : p.custo;
+      let cm;
+      if (novoEstoque !== estoqueAnt && novoEstoque > 0) {
+        // manual update: treat difference as new entry
+        const diff = novoEstoque - estoqueAnt;
+        if (diff > 0) cm = ((cmAnt * estoqueAnt) + (custo * diff)) / novoEstoque;
+        else cm = cmAnt; // reduction doesn't change average cost
+      } else {
+        cm = custo; // user typed custo directly
+      }
+      STATE.produtos[idx] = { ...p, nome, categoria, custo, venda, estoque, minimo, custoMedio: cm };
+    }
+    showToast('✅ Produto atualizado!');
+  } else {
+    STATE.produtos.push({ id: uid(), nome, categoria, custo, venda, estoque, minimo, custoMedio: custo, criadoEm: today() });
+    showToast('✅ Produto adicionado!');
+  }
+  save(); closeSheet('sheet-produto'); renderEstoque(); renderDashboard();
+}
+
+function excluirProduto() {
+  const id = document.getElementById('produto-edit-id').value;
+  if (!confirm('Excluir este produto?')) return;
+  STATE.produtos = STATE.produtos.filter(p => p.id !== id);
+  save(); closeSheet('sheet-produto'); renderEstoque();
+  showToast('🗑️ Produto excluído');
+}
+
+// ===== VENDA =====
+function abrirNovaVenda() {
+  vendaItens = [];
+  document.getElementById('venda-cliente').value   = '';
+  document.getElementById('venda-pagamento').selectedIndex = 0;
+  document.getElementById('venda-itens').innerHTML = '';
+  document.getElementById('venda-total').textContent = '$ 0.00';
+  openSheet('sheet-venda');
+  addItemVenda();
+}
+
+function addItemVenda() {
+  const idx  = vendaItens.length;
+  vendaItens.push({ produtoId: '', qty: 1 });
+  const opts = STATE.produtos.length === 0
+    ? '<option value="">Nenhum produto cadastrado</option>'
+    : '<option value="">Selecione o produto</option>' +
+      STATE.produtos.map(p =>
+        `<option value="${p.id}">${p.nome} — ${fmt(p.venda)} (Est: ${p.estoque})</option>`
+      ).join('');
+  const div = document.createElement('div');
+  div.className = 'sale-item-row';
+  div.id = 'sale-row-' + idx;
+  div.innerHTML = `
+    <select class="form-select" onchange="updateVendaItem(${idx},'prod',this.value)">${opts}</select>
+    <input class="form-input qty-input" type="number" min="1" value="1" oninput="updateVendaItem(${idx},'qty',this.value)">
+    <button class="delete-btn" onclick="removeVendaItem(${idx})">✕</button>`;
+  document.getElementById('venda-itens').appendChild(div);
+}
+
+function updateVendaItem(idx, field, val) {
+  if (!vendaItens[idx]) return;
+  if (field === 'prod') vendaItens[idx].produtoId = val;
+  if (field === 'qty')  vendaItens[idx].qty = Math.max(1, parseInt(val) || 1);
+  calcTotalVenda();
+}
+
+function removeVendaItem(idx) {
+  const el = document.getElementById('sale-row-' + idx);
+  if (el) el.remove();
+  vendaItens[idx] = null;
+  calcTotalVenda();
+}
+
+function calcTotalVenda() {
+  let total = 0;
+  for (const item of vendaItens) {
+    if (!item || !item.produtoId) continue;
+    const p = STATE.produtos.find(p => p.id === item.produtoId);
+    if (p) total += p.venda * item.qty;
+  }
+  document.getElementById('venda-total').textContent = fmt(total);
+  return total;
+}
+
+function finalizarVenda() {
+  const itens = vendaItens.filter(i => i && i.produtoId);
+  if (itens.length === 0) { showToast('❌ Adicione pelo menos um produto'); return; }
+  let total = 0, custo = 0;
+  const itensFinais = [];
+  for (const item of itens) {
+    const p = STATE.produtos.find(p => p.id === item.produtoId);
+    if (!p) continue;
+    if (p.estoque < item.qty) { showToast(`❌ Estoque insuficiente: ${p.nome} (${p.estoque} un.)`); return; }
+    total += p.venda * item.qty;
+    const cm = p.custoMedio !== undefined ? p.custoMedio : p.custo;
+    custo += cm * item.qty;
+    itensFinais.push({ produtoId: p.id, nome: p.nome, categoria: p.categoria, qty: item.qty, precoUnit: p.venda, custoUnit: cm });
+  }
+  for (const item of itensFinais) {
+    const p = STATE.produtos.find(p => p.id === item.produtoId);
+    if (p) p.estoque -= item.qty;
+  }
+  STATE.vendas.unshift({
+    id: uid(), data: new Date().toISOString(),
+    cliente:    document.getElementById('venda-cliente').value.trim() || 'Cliente',
+    pagamento:  document.getElementById('venda-pagamento').value,
+    itens: itensFinais, total, custo, lucro: total - custo
+  });
+  save(); closeSheet('sheet-venda');
+  showToast(`✅ Venda de ${fmt(total)} registrada!`);
+  renderVendas(); renderDashboard();
+}
+
+function abrirDetalheVenda(id) {
+  const v = STATE.vendas.find(v => v.id === id);
+  if (!v) return;
+  const dt       = new Date(v.data).toLocaleString('pt-BR');
+  const itensHtml= v.itens.map(i =>
+    `<div class="summary-row"><span class="summary-label">${i.nome} × ${i.qty}</span><span class="summary-value">${fmt(i.precoUnit * i.qty)}</span></div>`
+  ).join('');
+  document.getElementById('venda-detalhe-content').innerHTML = `
+    <div class="card card-sm" style="margin-bottom:12px">
+      <div class="summary-row"><span class="summary-label">Data</span><span class="summary-value">${dt}</span></div>
+      <div class="summary-row"><span class="summary-label">Cliente</span><span class="summary-value">${v.cliente}</span></div>
+      <div class="summary-row"><span class="summary-label">Pagamento</span><span class="summary-value" style="${v.pagamento==='⏳ Pendente'?'color:#D4820A':''}">${v.pagamento}</span></div>
+    </div>
+    <div class="card card-sm">
+      ${itensHtml}
+      <div class="divider"></div>
+      <div class="summary-row"><span class="summary-label">Custo</span><span class="summary-value" style="color:var(--rose)">${fmt(v.custo)}</span></div>
+      <div class="summary-row"><span class="summary-label">Lucro</span><span class="summary-value" style="color:var(--green)">${fmt(v.lucro)}</span></div>
+      <div class="summary-row"><span class="summary-label">Total</span><span class="summary-value total">${fmt(v.total)}</span></div>
+    </div>`;
+  // show "marcar como pago" if pending
+  const btnPago = document.getElementById('btn-marcar-pago');
+  if (v.pagamento === '⏳ Pendente') {
+    btnPago.style.display = 'flex';
+    btnPago.onclick = () => { marcarPago(id); closeSheet('sheet-venda-detalhe'); };
+  } else {
+    btnPago.style.display = 'none';
+  }
+  document.getElementById('btn-estornar').onclick = () => estornarVenda(id);
+  openSheet('sheet-venda-detalhe');
+}
+
+function estornarVenda(id) {
+  if (!confirm('Estornar esta venda? O estoque será devolvido.')) return;
+  const v = STATE.vendas.find(v => v.id === id);
+  if (!v) return;
+  for (const item of v.itens) {
+    const p = STATE.produtos.find(p => p.id === item.produtoId);
+    if (p) p.estoque += item.qty;
+  }
+  STATE.vendas = STATE.vendas.filter(v => v.id !== id);
+  save(); closeSheet('sheet-venda-detalhe');
+  showToast('↩️ Venda estornada');
+  renderVendas(); renderDashboard();
+}
+
+// ===== FILTERS =====
+function filterEstoque(f, btn) {
+  filtroEstoque = f;
+  document.querySelectorAll('#view-estoque .segment-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderEstoque();
+}
+function filterVendas(f, btn) {
+  filtroVendas = f;
+  document.querySelectorAll('#view-vendas .segment-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderVendas();
+}
+
+// ===== RENDER ESTOQUE =====
+function renderEstoque() {
+  let prods = [...STATE.produtos];
+  if (filtroEstoque === 'baixo')   prods = prods.filter(p => p.estoque > 0 && p.estoque <= p.minimo);
+  if (filtroEstoque === 'zerado')  prods = prods.filter(p => p.estoque === 0);
+  const el = document.getElementById('lista-estoque');
+  if (prods.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📦</div><p>Nenhum produto encontrado</p></div>'; return;
+  }
+  el.innerHTML = prods.map(p => {
+    const icon    = p.categoria ? p.categoria.split(' ')[0] : '📦';
+    const cm      = p.custoMedio !== undefined ? p.custoMedio : p.custo;
+    const margem  = cm > 0 ? Math.round((p.venda - cm) / p.venda * 100) : 0;
+    const hasCm   = p.custoMedio !== undefined && Math.abs(p.custoMedio - p.custo) > 0.001;
+    let estoqueClass = 'stock-ok', estoqueLabel = `${p.estoque} un.`;
+    if (p.estoque === 0)           { estoqueClass = 'stock-out'; estoqueLabel = 'Zerado'; }
+    else if (p.estoque <= p.minimo){ estoqueClass = 'stock-low'; estoqueLabel = `${p.estoque} un. ⚠️`; }
+    const cmTag = hasCm ? `<span class="cm-tag">⌀ CM ${fmt(p.custoMedio)}</span>` : '';
+    return `<div class="list-item" onclick="editarProduto('${p.id}')">
+      <div class="item-icon">${icon}</div>
+      <div class="item-info">
+        <div class="item-name">${p.nome}</div>
+        <div class="item-sub">${p.categoria} · Margem ${margem}%</div>
+        ${cmTag}
+      </div>
+      <div class="item-right">
+        <div class="item-price">${fmt(p.venda)}</div>
+        <div class="item-stock ${estoqueClass}">${estoqueLabel}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===== RENDER VENDAS =====
+function renderVendas() {
+  let vendas = [...STATE.vendas];
+  if (filtroVendas === 'hoje')   vendas = vendas.filter(v => v.data.startsWith(today()));
+  else if (filtroVendas === 'semana') { const ago = new Date(Date.now()-7*86400000).toISOString(); vendas = vendas.filter(v => v.data >= ago); }
+  const el = document.getElementById('lista-vendas');
+  if (vendas.length === 0) { el.innerHTML = '<div class="empty"><div class="empty-icon">🛒</div><p>Nenhuma venda neste período</p></div>'; return; }
+  el.innerHTML = vendas.map(v => {
+    const dt     = new Date(v.data).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' });
+    const resumo = v.itens.slice(0,2).map(i => i.nome).join(', ') + (v.itens.length > 2 ? ` +${v.itens.length-2}` : '');
+    const isPendente = v.pagamento === '⏳ Pendente';
+    const statusBadge = isPendente ? `<span class="badge badge-pending" style="margin-top:3px;display:inline-flex">⏳ Pendente</span>` : `<span style="font-size:11px;color:var(--green)">+${fmt(v.lucro)} lucro</span>`;
+    return `<div class="list-item" onclick="abrirDetalheVenda('${v.id}')" style="${isPendente?'border-left:3px solid #F5C97A;':''}">
+      <div class="item-icon">${isPendente?'⏳':'🛍️'}</div>
+      <div class="item-info"><div class="item-name">${v.cliente}</div><div class="item-sub">${dt} · ${resumo}</div></div>
+      <div class="item-right"><div class="item-price">${fmt(v.total)}</div>${statusBadge}</div>
+    </div>`;
+  }).join('');
+}
+
+// ===== RENDER DASHBOARD =====
+function renderDashboard() {
+  const vendas      = STATE.vendas;
+  const hojeVendas  = vendas.filter(v => v.data.startsWith(today()));
+  const hojeTotal   = hojeVendas.reduce((s,v)=>s+v.total,0);
+  const totalReceita= vendas.reduce((s,v)=>s+v.total,0);
+  const totalLucro  = vendas.reduce((s,v)=>s+v.lucro,0);
+  const margem      = totalReceita>0 ? Math.round(totalLucro/totalReceita*100) : 0;
+  document.getElementById('kpi-hoje').textContent       = fmt(hojeTotal);
+  document.getElementById('kpi-hoje-qtd').textContent   = `${hojeVendas.length} venda${hojeVendas.length!==1?'s':''}`;
+  document.getElementById('kpi-lucro').textContent      = fmt(totalLucro);
+  document.getElementById('kpi-margem').textContent     = `${margem}% margem`;
+  document.getElementById('kpi-receita').textContent    = fmt(totalReceita);
+  document.getElementById('kpi-total-vendas').textContent= `${vendas.length} vendas`;
+  const alertas = STATE.produtos.filter(p => p.estoque <= p.minimo);
+  document.getElementById('kpi-estoque').textContent    = STATE.produtos.reduce((s,p)=>s+p.estoque,0);
+  document.getElementById('kpi-alertas').textContent    = alertas.length>0 ? `${alertas.length} alerta${alertas.length>1?'s':''}` : 'tudo ok';
+
+  const porProduto = {};
+  for (const v of vendas) for (const i of v.itens) porProduto[i.nome] = (porProduto[i.nome]||0) + i.precoUnit*i.qty;
+  const sorted = Object.entries(porProduto).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const chartEl = document.getElementById('dash-chart');
+  if (sorted.length===0) { chartEl.innerHTML='<div class="empty"><div class="empty-icon">📊</div><p>Nenhuma venda registrada ainda</p></div>'; }
+  else { const max=sorted[0][1]; chartEl.innerHTML=sorted.map(([n,v])=>`<div class="chart-bar-row"><span class="chart-bar-label">${n.split(' ').slice(0,2).join(' ')}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${Math.round(v/max*100)}%">${fmt(v)}</div></div></div>`).join(''); }
+
+  const alertEl = document.getElementById('dash-alertas');
+  if (alertas.length===0) { alertEl.innerHTML='<div class="empty"><div class="empty-icon">✅</div><p>Todos os produtos estão com estoque ok!</p></div>'; }
+  else { alertEl.innerHTML=alertas.map(p=>`<div class="summary-row"><span class="summary-label">${p.nome}</span><span class="badge ${p.estoque===0?'badge-rose':'badge-gold'}">${p.estoque===0?'Zerado':p.estoque+' un.'}</span></div>`).join(''); }
+
+  const ultimasEl = document.getElementById('dash-ultimas');
+  if (vendas.length===0) { ultimasEl.innerHTML='<div class="empty"><div class="empty-icon">🛍️</div><p>Nenhuma venda ainda</p></div>'; }
+  else { ultimasEl.innerHTML=vendas.slice(0,4).map(v=>{const dt=new Date(v.data).toLocaleDateString('pt-BR',{day:'2-digit',month:'short'});const isPend=v.pagamento==='⏳ Pendente';return`<div class="summary-row"><span class="summary-label">${isPend?'⏳ ':''}${dt} · ${v.cliente}</span><span class="summary-value" style="${isPend?'color:#D4820A':''}">${fmt(v.total)}</span></div>`}).join(''); }
+
+  // PENDENTES BANNER
+  const pendentes = vendas.filter(v => v.pagamento === '⏳ Pendente');
+  const totalPend = pendentes.reduce((s,v)=>s+v.total,0);
+  const banner    = document.getElementById('dash-pendentes-banner');
+  if (pendentes.length > 0) {
+    banner.style.display = 'block';
+    document.getElementById('kpi-pendente-valor').textContent = fmt(totalPend);
+    document.getElementById('kpi-pendente-qtd').textContent   = `${pendentes.length} venda${pendentes.length>1?'s':''} aguardando pagamento`;
+  } else {
+    banner.style.display = 'none';
+  }
+}
+
+// ===== RENDER RESULTADOS =====
+function renderResultados() {
+  const vendas       = STATE.vendas;
+  const totalReceita = vendas.reduce((s,v)=>s+v.total,0);
+  const totalCusto   = vendas.reduce((s,v)=>s+v.custo,0);
+  const totalLucro   = totalReceita-totalCusto;
+  const margem       = totalReceita>0 ? Math.round(totalLucro/totalReceita*100) : 0;
+  document.getElementById('res-receita').textContent    = fmt(totalReceita);
+  document.getElementById('res-custo').textContent      = fmt(totalCusto);
+  document.getElementById('res-lucro').textContent      = fmt(totalLucro);
+  document.getElementById('res-profit-fill').style.width= margem+'%';
+  document.getElementById('res-margem-txt').textContent = `Margem de lucro: ${margem}%`;
+
+  const porProduto={};
+  for (const v of vendas) for (const i of v.itens) {
+    if (!porProduto[i.nome]) porProduto[i.nome]={receita:0,lucro:0,qty:0};
+    porProduto[i.nome].receita+=i.precoUnit*i.qty;
+    porProduto[i.nome].lucro+=(i.precoUnit-i.custoUnit)*i.qty;
+    porProduto[i.nome].qty+=i.qty;
+  }
+  const sorted=Object.entries(porProduto).sort((a,b)=>b[1].receita-a[1].receita).slice(0,5);
+  const topEl=document.getElementById('res-top-produtos');
+  if (sorted.length===0){topEl.innerHTML='<div class="empty"><div class="empty-icon">🏆</div><p>Faça vendas para ver o ranking</p></div>';}
+  else{const max=sorted[0][1].receita;topEl.innerHTML=sorted.map(([n,d],i)=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="font-size:13px;font-weight:600">${i+1}. ${n}</span><span style="font-size:13px;color:var(--muted)">${d.qty} un · ${fmt(d.receita)}</span></div><div class="profit-bar"><div class="profit-fill" style="width:${Math.round(d.receita/max*100)}%"></div></div></div>`).join('');}
+
+  const porMes={};
+  for(const v of vendas){const m=v.data.substring(0,7);porMes[m]=(porMes[m]||0)+v.total;}
+  const meses=Object.entries(porMes).sort((a,b)=>a[0].localeCompare(b[0])).slice(-6);
+  const pEl=document.getElementById('res-chart-periodo');
+  if(meses.length===0){pEl.innerHTML='<div class="empty"><div class="empty-icon">📅</div><p>Nenhuma venda registrada</p></div>';}
+  else{const maxM=Math.max(...meses.map(m=>m[1]));pEl.innerHTML=meses.map(([mes,val])=>{const[y,m]=mes.split('-');const n=new Date(y,m-1).toLocaleDateString('pt-BR',{month:'short',year:'2-digit'});return`<div class="chart-bar-row"><span class="chart-bar-label">${n}</span><div class="chart-bar-bg"><div class="chart-bar-fill" style="width:${Math.round(val/maxM*100)}%">${fmt(val)}</div></div></div>`}).join('');}
+
+  const ticket=vendas.length>0?totalReceita/vendas.length:0;
+  document.getElementById('stat-num-vendas').textContent=vendas.length;
+  document.getElementById('stat-ticket').textContent=fmt(ticket);
+  document.getElementById('stat-top').textContent=sorted.length>0?sorted[0][0].split(' ').slice(0,3).join(' '):'—';
+  document.getElementById('stat-produtos').textContent=STATE.produtos.length;
+
+  renderCobrancas();
+}
+
+// ===== COBRANÇAS PENDENTES =====
+function renderCobrancas() {
+  const pendentes = STATE.vendas.filter(v => v.pagamento === '⏳ Pendente');
+  const totalPend = pendentes.reduce((s,v)=>s+v.total,0);
+  const el        = document.getElementById('lista-cobrancas');
+  const badge     = document.getElementById('cobrancas-total-badge');
+  const resumo    = document.getElementById('cobrancas-resumo');
+
+  if (pendentes.length === 0) {
+    el.innerHTML = '<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:32px">✅</div><p>Nenhuma venda com pagamento pendente</p></div>';
+    badge.style.display  = 'none';
+    resumo.textContent   = 'Nenhuma cobrança pendente';
+    return;
+  }
+
+  badge.style.display  = 'inline-flex';
+  badge.textContent    = `Total: ${fmt(totalPend)}`;
+  resumo.textContent   = `${pendentes.length} cliente${pendentes.length>1?'s':''} · ${fmt(totalPend)} a receber`;
+
+  el.innerHTML = pendentes.map(v => {
+    const dt = new Date(v.data).toLocaleDateString('pt-BR', { day:'2-digit', month:'short', year:'numeric' });
+    const resumoItens = v.itens.slice(0,2).map(i=>i.nome).join(', ') + (v.itens.length>2?` +${v.itens.length-2}`:'');
+    return `
+      <div class="pending-card" id="pend-${v.id}">
+        <button class="pending-check" onclick="marcarPago('${v.id}')" title="Marcar como pago">✓</button>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.cliente}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${dt} · ${resumoItens}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0">
+          <div style="font-size:15px;font-weight:700;color:#D4820A">${fmt(v.total)}</div>
+          <div style="font-size:10px;color:#D4820A;margin-top:2px">⏳ Pendente</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function marcarPago(id) {
+  const v = STATE.vendas.find(v => v.id === id);
+  if (!v) return;
+  // Animate check
+  const card = document.getElementById('pend-' + id);
+  if (card) { card.style.opacity='0.4'; card.style.transform='scale(0.97)'; }
+  setTimeout(() => {
+    v.pagamento = '💵 Recebido';
+    save();
+    renderCobrancas();
+    renderDashboard();
+    renderVendas();
+    showToast(`✅ Pagamento de ${v.cliente} confirmado!`);
+  }, 300);
+}
+
+// ===== IMPORT EXCEL =====
+let importPreviewData=[];
+const CATS=["💄 Batom","💅 Esmalte","👁️ Olhos","✨ Base/Pó","💆 Skin Care","💇 Cabelo","🌸 Perfume","🧴 Corpo","🎁 Kit/Presente","📦 Outro"];
+
+function handleDragOver(e){e.preventDefault();document.getElementById('import-dropzone').classList.add('drag-over');}
+function handleDragLeave(e){document.getElementById('import-dropzone').classList.remove('drag-over');}
+function handleDrop(e){e.preventDefault();document.getElementById('import-dropzone').classList.remove('drag-over');if(e.dataTransfer.files[0])processExcelFile(e.dataTransfer.files[0]);}
+function handleFileSelect(e){if(e.target.files[0]){processExcelFile(e.target.files[0]);e.target.value='';}}
+
+function processExcelFile(file) {
+  if (!file.name.match(/\.(xlsx|xls)$/i)) { showToast('❌ Use um arquivo .xlsx ou .xls'); return; }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb   = XLSX.read(new Uint8Array(e.target.result), { type:'array' });
+      const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header:1, defval:'' });
+      const hkw  = ['nome','produto','categoria','custo','venda','estoque'];
+      let startRow = 0;
+      for (let i=0; i<Math.min(rows.length,5); i++) {
+        if (hkw.some(k => String(rows[i][0]||'').toLowerCase().includes(k))) { startRow=i+1; break; }
+      }
+      importPreviewData = [];
+      for (let i=startRow; i<rows.length; i++) {
+        const row  = rows[i];
+        const nome = String(row[0]||'').trim();
+        if (!nome) continue;
+        const catRaw   = String(row[1]||'').trim();
+        const categoria= CATS.find(c=>c.toLowerCase().replace(/[^\w\s]/g,'').includes(catRaw.toLowerCase().replace(/[^\w\s]/g,'')))
+                      || CATS.find(c=>catRaw.includes(c)) || '📦 Outro';
+        const custo    = parseFloat(String(row[2]).replace(',','.')) || 0;
+        const venda    = parseFloat(String(row[3]).replace(',','.')) || 0;
+        const estoque  = parseInt(row[4]) || 0;
+        const minimo   = parseInt(row[5]) || 5;
+        const errors   = [];
+        if (venda<=0) errors.push('Preço de venda inválido');
+        if (venda>0 && venda<custo) errors.push('Venda menor que custo');
+
+        // Check existing product for merge preview
+        const existing = STATE.produtos.find(p => p.nome.toLowerCase()===nome.toLowerCase());
+        let mergInfo = null;
+        if (existing) {
+          const cmAnt     = existing.custoMedio !== undefined ? existing.custoMedio : existing.custo;
+          const estAnt    = existing.estoque;
+          const novoEst   = estAnt + estoque;
+          const novoCm    = novoEst > 0 ? ((cmAnt*estAnt) + (custo*estoque)) / novoEst : custo;
+          mergInfo = { estoqueAnt: estAnt, novoEstoque: novoEst, cmAnt, novoCm };
+        }
+        importPreviewData.push({ nome, categoria, custo, venda, estoque, minimo, errors, existing, mergInfo });
+      }
+      if (importPreviewData.length===0) { showToast('❌ Nenhum produto encontrado'); return; }
+      showImportPreview();
+    } catch(err) { showToast('❌ Erro ao ler arquivo: '+err.message); }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function showImportPreview() {
+  document.getElementById('import-step-1').style.display='none';
+  document.getElementById('import-step-2').style.display='block';
+  const validos    = importPreviewData.filter(r=>r.errors.length===0);
+  const invalidos  = importPreviewData.filter(r=>r.errors.length>0);
+  const mesclados  = importPreviewData.filter(r=>r.existing && r.errors.length===0);
+  const novos      = validos.filter(r=>!r.existing);
+  document.getElementById('import-stats-row').innerHTML=`
+    <div class="import-stat"><div class="import-stat-val" style="color:var(--ink)">${importPreviewData.length}</div><div class="import-stat-lbl">Total</div></div>
+    <div class="import-stat"><div class="import-stat-val" style="color:var(--green)">${novos.length}</div><div class="import-stat-lbl">Novos</div></div>
+    <div class="import-stat"><div class="import-stat-val" style="color:var(--gold)">${mesclados.length}</div><div class="import-stat-lbl">Mesclados</div></div>
+    <div class="import-stat"><div class="import-stat-val" style="color:var(--rose)">${invalidos.length}</div><div class="import-stat-lbl">Erros</div></div>`;
+  document.getElementById('import-preview-list').innerHTML = importPreviewData.map(r => {
+    let icon='✅', detail=`${r.categoria} · Venda: ${fmt(r.venda)} · Est: +${r.estoque}`;
+    if (r.errors.length>0) { icon='❌'; detail=r.errors.join(', '); }
+    else if (r.existing && r.mergInfo) {
+      const m = r.mergInfo;
+      icon = '🔄';
+      detail = `Est: ${m.estoqueAnt} + ${r.estoque} = ${m.novoEstoque} un. · CM: ${fmt(m.cmAnt)} → ${fmt(m.novoCm)}`;
+    }
+    return `<div class="preview-row"><span class="preview-check">${icon}</span><div><div class="preview-name">${r.nome}</div><div class="preview-detail">${detail}</div></div></div>`;
+  }).join('');
+  const btn=document.getElementById('btn-confirmar-import');
+  btn.disabled=validos.length===0;
+  btn.textContent=validos.length===0?'❌ Nenhum produto válido':`✅ Importar ${validos.length} produto${validos.length>1?'s':''}`;
+}
+
+function confirmarImportacao() {
+  let adicionados=0, mesclados=0;
+  for (const item of importPreviewData.filter(r=>r.errors.length===0)) {
+    const idx = STATE.produtos.findIndex(p => p.nome.toLowerCase()===item.nome.toLowerCase());
+    if (idx>=0) {
+      // MERGE: soma estoque + recalcula custo medio aritmético ponderado
+      const p      = STATE.produtos[idx];
+      const cmAnt  = p.custoMedio !== undefined ? p.custoMedio : p.custo;
+      const estAnt = p.estoque;
+      const novoEst= estAnt + item.estoque;
+      const novoCm = novoEst > 0 ? ((cmAnt*estAnt) + (item.custo*item.estoque)) / novoEst : item.custo;
+      STATE.produtos[idx] = {
+        ...p,
+        categoria:  item.categoria,
+        venda:      item.venda,
+        minimo:     item.minimo,
+        estoque:    novoEst,
+        custo:      item.custo,       // last purchase cost
+        custoMedio: novoCm,           // weighted average
+      };
+      mesclados++;
+    } else {
+      STATE.produtos.push({
+        id: uid(), nome: item.nome, categoria: item.categoria,
+        custo: item.custo, venda: item.venda,
+        estoque: item.estoque, minimo: item.minimo,
+        custoMedio: item.custo, criadoEm: today()
+      });
+      adicionados++;
+    }
+  }
+  save(); closeSheet('sheet-importar'); resetImport(); renderEstoque(); renderDashboard();
+  const parts=[adicionados>0?`${adicionados} novo${adicionados>1?'s':''}`:''  ,mesclados>0?`${mesclados} mesclado${mesclados>1?'s':''}`:'' ].filter(Boolean);
+  showToast(`✅ Importação: ${parts.join(', ')}!`);
+}
+
+function resetImport() {
+  importPreviewData=[];
+  document.getElementById('import-step-1').style.display='block';
+  document.getElementById('import-step-2').style.display='none';
+}
+
+// ===== DOWNLOAD TEMPLATE =====
+function downloadTemplate() {
+  const wb = XLSX.utils.book_new();
+  const data = [
+    ["Nome do Produto","Categoria","Custo Unitário ($)","Preço de Venda ($)","Estoque Atual","Estoque Mínimo"],
+    ["Batom Matte Vermelho","💄 Batom",12.00,28.00,15,5],
+    ["Esmalte Nude Rosa","💅 Esmalte",4.50,12.00,30,10],
+    ["Máscara de Cílios Black","👁️ Olhos",18.00,42.00,20,5],
+    ["Base Líquida Bege","✨ Base/Pó",22.00,55.00,12,3],
+    ["Hidratante Facial","💆 Skin Care",30.00,75.00,8,3],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:35},{wch:20},{wch:20},{wch:20},{wch:16},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, ws, "Produtos");
+  const ws2 = XLSX.utils.aoa_to_sheet([["Categorias disponíveis:"],...CATS.map(c=>[c])]);
+  ws2['!cols']=[{wch:30}];
+  XLSX.utils.book_append_sheet(wb, ws2, "Categorias");
+  XLSX.writeFile(wb, "template_produtos.xlsx");
+  showToast('⬇️ Planilha modelo baixada!');
+}
+
+// ===== BACKUP & SYNC (iCloud Shortcut version) =====
+
+// ── helpers ──────────────────────────────────────────────
+function fmtDate(iso) {
+  if (!iso) return 'Nunca';
+  return new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+function buildBackupPayload() {
+  return { versao:'1.1', geradoEm: new Date().toISOString(), produtos: STATE.produtos, vendas: STATE.vendas };
+}
+
+function applyBackupPayload(data) {
+  if (!data.produtos || !data.vendas || !Array.isArray(data.produtos) || !Array.isArray(data.vendas))
+    throw new Error('Estrutura de backup inválida');
+  STATE.produtos = data.produtos;
+  STATE.vendas   = data.vendas;
+  save();
+  renderDashboard(); renderEstoque();
+  const agora = new Date().toISOString();
+  localStorage.setItem('gloss_ultimo_import', agora);
+  return agora;
+}
+
+// ── abre o painel ──────────────────────────────────────────
+function abrirBackup() {
+  document.getElementById('bkp-num-produtos').textContent  = STATE.produtos.length;
+  document.getElementById('bkp-num-vendas').textContent    = STATE.vendas.length;
+  document.getElementById('bkp-ultimo-export').textContent = fmtDate(localStorage.getItem('gloss_ultimo_export'));
+  document.getElementById('bkp-ultimo-import').textContent = fmtDate(localStorage.getItem('gloss_ultimo_import'));
+  // update status indicator
+  const jaSync = !!localStorage.getItem('gloss_ultimo_export');
+  document.getElementById('bkp-status-icon').textContent  = jaSync ? '✅' : '⚙️';
+  document.getElementById('bkp-status-title').textContent = jaSync ? 'Sync configurado' : 'Configure o Atalho';
+  document.getElementById('bkp-status-sub').textContent   = jaSync
+    ? 'Exporte após cada uso para manter o iCloud atualizado'
+    : 'Siga o guia gloss-shortcut-guide.html para ativar o sync automático';
+  document.getElementById('bkp-sync-status').style.background = jaSync ? 'var(--green-light)' : '#FDF7E8';
+  document.getElementById('bkp-status-title').style.color = jaSync ? 'var(--green)' : 'var(--gold)';
+  document.getElementById('bkp-status-sub').style.color   = jaSync ? 'var(--green)' : 'var(--gold)';
+  openSheet('sheet-backup');
+}
+
+// ── exportar gloss-sync.json (nome fixo para o Shortcut ler) ──
+function exportarSyncICloud() {
+  const agora   = new Date().toISOString();
+  const payload = buildBackupPayload();
+  payload.geradoEm = agora;
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:'application/json' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'gloss-sync.json';   // NOME FIXO — o Shortcut procura este arquivo
+  a.click();
+  URL.revokeObjectURL(url);
+  localStorage.setItem('gloss_ultimo_export', agora);
+  document.getElementById('bkp-ultimo-export').textContent = fmtDate(agora);
+  showToast('☁️ gloss-sync.json exportado! Mova para iCloud Drive/Gloss/');
+}
+
+// ── restaurar manualmente (fallback) ──────────────────────
+function importarBackup(e) {
+  const file = e.target.files[0];
+  e.target.value = '';
+  if (!file) return;
+  if (!file.name.endsWith('.json')) { showToast('❌ Selecione um arquivo .json'); return; }
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      const dtGerado = fmtDate(data.geradoEm);
+      const ok = confirm(
+        `Restaurar sync?\n\n📅 Gerado em: ${dtGerado}\n📦 ${data.produtos.length} produtos\n🛒 ${data.vendas.length} vendas\n\n⚠️ Os dados locais serão SUBSTITUÍDOS.`
+      );
+      if (!ok) return;
+      const ts = applyBackupPayload(data);
+      document.getElementById('bkp-num-produtos').textContent  = STATE.produtos.length;
+      document.getElementById('bkp-num-vendas').textContent    = STATE.vendas.length;
+      document.getElementById('bkp-ultimo-import').textContent = fmtDate(ts);
+      showToast(`✅ Sync restaurado! ${data.produtos.length} produtos, ${data.vendas.length} vendas`);
+    } catch(err) { showToast('❌ Erro: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ── auto-sync via URL param ?sync=<JSON> (injetado pelo Shortcut) ─
+(function checkUrlSync() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw    = params.get('sync');
+    if (!raw) return;
+    const data = JSON.parse(decodeURIComponent(raw));
+    if (!data.produtos || !data.vendas) return;
+    // só aplica se o backup for MAIS NOVO que o local
+    const localTs  = localStorage.getItem('gloss_ultimo_export') || '0';
+    const remoteTs = data.geradoEm || '0';
+    if (remoteTs <= localTs) {
+      console.log('Gloss: backup remoto não é mais recente, ignorando sync automático');
+      // clean URL without reload
+      history.replaceState(null,'', window.location.pathname);
+      return;
+    }
+    applyBackupPayload(data);
+    // clean URL
+    history.replaceState(null,'', window.location.pathname);
+    // show banner
+    const banner = document.createElement('div');
+    banner.style.cssText='position:fixed;top:env(safe-area-inset-top,0);left:0;right:0;z-index:500;background:#5A8A72;color:#fff;text-align:center;padding:10px 16px;font-size:13px;font-weight:600;animation:slideDown 0.4s ease';
+    banner.textContent = `🔄 Sincronizado via iCloud — ${data.produtos.length} produtos, ${data.vendas.length} vendas`;
+    document.body.appendChild(banner);
+    setTimeout(() => banner.remove(), 3500);
+  } catch(e) {
+    console.warn('Gloss: erro no sync automático', e);
+    history.replaceState(null,'', window.location.pathname);
+  }
+})();
+
+// ── auto-export ao sair/fechar (best-effort) ──────────────
+window.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    // Saves a compact backup to sessionStorage so Shortcut can pick it up
+    // on next app open via the URL-param mechanism (manual step still needed
+    // to write to iCloud, but this keeps data fresh in session)
+    try {
+      sessionStorage.setItem('gloss_last_session', JSON.stringify(buildBackupPayload()));
+    } catch(e) {}
+  }
+});
+
+function resetarDados() {
+  if (!confirm('⚠️ Apagar TODOS os dados?\n\nProdutos e vendas serão removidos permanentemente.\nEsta ação não pode ser desfeita.')) return;
+  if (!confirm('Tem certeza? Esta ação é IRREVERSÍVEL.')) return;
+  STATE.produtos = []; STATE.vendas = [];
+  save(); renderDashboard(); renderEstoque();
+  document.getElementById('bkp-num-produtos').textContent = '0';
+  document.getElementById('bkp-num-vendas').textContent   = '0';
+  showToast('🗑️ Dados apagados');
+}
+
+// add slideDown animation
+const styleEl = document.createElement('style');
+styleEl.textContent = '@keyframes slideDown{from{transform:translateY(-100%)}to{transform:translateY(0)}}';
+document.head.appendChild(styleEl);
+
+// ===== INIT =====
+renderDashboard();
+renderEstoque();
+</script>
+</body>
+</html>
